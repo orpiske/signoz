@@ -451,6 +451,12 @@ func (aH *APIHandler) queryRangeMetricsV2(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// prometheus instant query needs same timestamp
+	if metricsQueryRangeParams.CompositeMetricQuery.PanelType == model.QUERY_VALUE &&
+		metricsQueryRangeParams.CompositeMetricQuery.QueryType == model.PROM {
+		metricsQueryRangeParams.Start = metricsQueryRangeParams.End
+	}
+
 	type channelResult struct {
 		Series []*model.Series
 		Err    error
@@ -556,7 +562,7 @@ func (aH *APIHandler) queryRangeMetricsV2(w http.ResponseWriter, r *http.Request
 	var err error
 	switch metricsQueryRangeParams.CompositeMetricQuery.QueryType {
 	case model.QUERY_BUILDER:
-		runQueries := metrics.PrepareBuilderMetricQueries(metricsQueryRangeParams, "time_series")
+		runQueries := metrics.PrepareBuilderMetricQueries(metricsQueryRangeParams, constants.SIGNOZ_TIMESERIES_TABLENAME)
 		if runQueries.Err != nil {
 			respondError(w, &model.ApiError{Typ: model.ErrorBadData, Err: runQueries.Err}, nil)
 			return
@@ -581,6 +587,13 @@ func (aH *APIHandler) queryRangeMetricsV2(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		apiErrObj := &model.ApiError{Typ: model.ErrorBadData, Err: err}
 		respondError(w, apiErrObj, nil)
+		return
+	}
+	if metricsQueryRangeParams.CompositeMetricQuery.PanelType == model.QUERY_VALUE &&
+		len(seriesList) > 1 &&
+		(metricsQueryRangeParams.CompositeMetricQuery.QueryType == model.QUERY_BUILDER ||
+			metricsQueryRangeParams.CompositeMetricQuery.QueryType == model.CLICKHOUSE) {
+		respondError(w, &model.ApiError{Typ: model.ErrorBadData, Err: fmt.Errorf("invalid: query resulted in more than one series for value type")}, nil)
 		return
 	}
 
