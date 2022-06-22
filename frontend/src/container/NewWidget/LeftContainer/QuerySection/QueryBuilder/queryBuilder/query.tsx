@@ -18,7 +18,13 @@ import {
 import { getMetricName } from 'api/metrics/getMetricName';
 import MonacoEditor from 'components/Editor';
 import { GRAPH_TYPES } from 'container/NewDashboard/ComponentsSlider';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from 'react';
 import { useSelector } from 'react-redux';
 import { AppState } from 'store/reducers';
 import { EReduceOperator } from 'types/common/dashboard';
@@ -48,7 +54,14 @@ function MetricsBuilder({
 
 	const [metricNameList, setMetricNameList] = useState([]);
 	const [metricNameLoading, setMetricNameLoading] = useState(false);
+
+	const handleMetricNameSelect = (e) => {
+		handleQueryChange({ queryIndex, metricName: e });
+		setMetricName(e);
+	};
+
 	const handleMetricNameSearch = async (searchQuery = '') => {
+		handleMetricNameSelect(searchQuery);
 		setMetricNameList([]);
 		setMetricNameLoading(true);
 		const { payload } = await getMetricName(searchQuery);
@@ -121,10 +134,8 @@ function MetricsBuilder({
 								value: option,
 							}))}
 							defaultValue={queryData.metricName}
-							onSelect={(e) => {
-								handleQueryChange({ queryIndex, metricName: e });
-								setMetricName(e);
-							}}
+							value={metricName}
+							onSelect={handleMetricNameSelect}
 						/>
 					</Row>
 					<Col style={{ flex: 3 }}>
